@@ -1,0 +1,34 @@
+.tool-header {
+  cursor: pointer;
+
+  span {
+    display: inline-block;
+    margin: 1rem;
+  }
+}
+
+.chkbox-block {
+  margin-bottom: 0.2rem;
+
+  .btn-toolbar {
+    margin-left: 1rem;
+  }
+
+  .form-check {
+    padding: 0.5rem 1rem;
+  }
+}
+
+.dates-block {
+  margin-bottom: 0.2rem;
+}
+
+#status-bar {
+  color: #333;
+  font-size: 75%;
+  margin-bottom: 1rem;
+
+  span {
+    padding-right: 0.2rem;
+  }
+}
