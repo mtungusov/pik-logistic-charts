@@ -4,7 +4,8 @@
             [ajax.core :refer [json-request-format json-response-format]]
             [clojure.set]
             [pik-logistic-charts.db :as db]
-            [pik-logistic-charts.util :as util]))
+            [pik-logistic-charts.util :as util]
+            [pik-logistic-charts.subs :as subs]))
 
 
 (rf/reg-event-db
@@ -15,3 +16,103 @@
       (update-in db/default-db [:filters]
                  merge {:date-from date-from :date-to date-to}))))
 
+
+(rf/reg-event-db
+  ::check-one-checkbox
+  (fn [db [_ filter-key value]]
+    (update-in db [:filters filter-key] conj value)))
+
+
+(rf/reg-event-db
+  ::uncheck-one-checkbox
+  (fn [db [_ filter-key value]]
+    (update-in db [:filters filter-key] disj value)))
+
+
+(rf/reg-event-fx
+  ::error-api
+  (fn [_ _]
+    (js/console.log "API error!")))
+
+
+(rf/reg-event-db
+  ::geo-zones-loaded
+  (fn [db [_ resp]]
+    (let [items (get-in resp [:result])]
+      (assoc db :geo-zones (set items)))))
+
+
+(rf/reg-event-db
+  ::groups-loaded
+  (fn [db [_ resp]]
+    (let [items (get-in resp [:result])]
+      (assoc db :groups (set items)))))
+
+
+(rf/reg-event-fx
+  ::load-geo-zones
+  (fn [_ _]
+    {:http-xhrio {:method :get
+                  :uri (util/uri "q/zones")
+                  :timeout 10000
+                  :format (json-request-format)
+                  :response-format (json-response-format {:keywords? true})
+                  :on-success [::geo-zones-loaded]
+                  :on-failure [::error-api]}}))
+
+
+(rf/reg-event-fx
+  ::load-groups
+  (fn [_ _]
+    {:http-xhrio {:method :get
+                  :uri (util/uri "q/groups")
+                  :timeout 10000
+                  :format (json-request-format)
+                  :response-format (json-response-format {:keywords? true})
+                  :on-success [::groups-loaded]
+                  :on-failure [::error-api]}}))
+
+
+(rf/reg-event-fx
+  ::init-load-data
+  (fn [_ _]
+    (rf/dispatch [::load-geo-zones])
+    (rf/dispatch [::load-groups])))
+
+
+(rf/reg-event-db
+  ::clear-filter-geo-zones
+  (fn [db _]
+    (assoc-in db [:filters :geo-zones] #{})))
+
+
+(rf/reg-event-db
+  ::clear-filter-groups
+  (fn [db _]
+    (assoc-in db [:filters :groups] #{})))
+
+
+(rf/reg-event-db
+  ::invert-filter-geo-zones
+  (fn [db _]
+    (let [all-items (set @(rf/subscribe [::subs/geo-zones]))]
+      (update-in db [:filters :geo-zones] #(clojure.set/difference all-items %)))))
+
+
+(rf/reg-event-db
+  ::invert-filter-groups
+  (fn [db _]
+    (let [all-items (set @(rf/subscribe [::subs/groups]))]
+      (update-in db [:filters :groups] #(clojure.set/difference all-items %)))))
+
+
+(rf/reg-event-db
+  ::filter-dates-changed
+  (fn [db [_ el-name el-value]]
+    (assoc-in db [:filters (keyword el-name)] el-value)))
+
+
+(rf/reg-event-fx
+  ::load-data
+  (fn [_ _]
+    (js/console.log "Loading DATA!")))
